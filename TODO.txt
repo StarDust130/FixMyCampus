@@ -1,0 +1,55 @@
+📱 Site Map (Mobile-First)
+---
+Public Routes (🔓 Public Access)
+- 🏠 / → Home Page
+- 📝 /report → Report Issue Page
+- 🚩 /issues → Issues List Page
+- 📄 /issues/[id] → Issue Detail Page
+- 🔑 /auth/sign-in → Sign In Page
+- ✍️ /auth/sign-up → Sign Up Page
+
+Admin Routes (🔒 Admin Access)
+- 🛠️ /admin → Admin Dashboard
+- 🚩 /admin/issues → Admin Issues List
+- 📄 /admin/issues/[id] → Admin Issue Detail
+- 📊 /admin/analytics → Analytics Page
+- 🏫 /admin/departments → Departments Page
+
+---
+
+🗂️ Folder Structure (Next.js 16 App Router)
+---
+app/
+├── 🏠 page.tsx (Home)
+├── 📝 report/page.tsx (Report Issue)
+├── 🚩 issues/page.tsx (Issues List)
+├── 📄 issues/[id]/page.tsx (Issue Detail)
+├── 🔑 auth/sign-in/page.tsx (Sign In)
+├── ✍️ auth/sign-up/page.tsx (Sign Up)
+├── 🛠️ admin/page.tsx (Admin Dashboard)
+├── 🚩 admin/issues/page.tsx (Admin Issues List)
+├── 📄 admin/issues/[id]/page.tsx (Admin Issue Detail)
+├── 📊 admin/analytics/page.tsx (Analytics)
+├── 🏫 admin/departments/page.tsx (Departments)
+├── 📝 api/issues/route.ts (POST/GET Issues)
+├── 🔄 api/issues/[id]/status/route.ts (PATCH Status)
+├── 👤 api/issues/[id]/assign/route.ts (PATCH Assign)
+├── 🚩 api/admin/issues/route.ts (GET Admin Issues)
+├── 📊 api/admin/analytics/route.ts (GET Analytics)
+└── 🏫 api/admin/departments/route.ts (POST Departments)
+
+---
+
+⚙️ API Endpoints (Short Summary)
+---
+Public APIs (🔓 Public Access)
+- 📝 POST /api/issues → Create Issue
+- 📋 GET /api/issues → List Issues
+- 📄 GET /api/issues/[id] → Get Issue Detail
+
+Admin APIs (🔒 Admin Access)
+- 🔄 PATCH /api/issues/[id]/status → Update Issue Status
+- 👤 PATCH /api/issues/[id]/assign → Assign Issue
+- 🚩 GET /api/admin/issues → Admin Issues List
+- 📊 GET /api/admin/analytics → Analytics Data
+- 🏫 POST /api/admin/departments → Create Department
