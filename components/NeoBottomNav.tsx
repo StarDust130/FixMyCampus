@@ -1,38 +1,29 @@
-// components/NeoBottomNav.tsx
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Home, Search, Bell, User, Plus } from "lucide-react";
+import { Home, FileText, User, Plus } from "lucide-react";
+import Link from "next/link";
 
-interface NeoBottomNavProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
-  onFabClick: () => void;
-}
-
-const tabs = [
-  { id: "home", icon: Home, label: "Home" },
-  { id: "search", icon: Search, label: "Find" },
-  { id: "activity", icon: Bell, label: "Alerts" },
-  { id: "profile", icon: User, label: "Profile" },
-];
-
-export const NeoBottomNav = ({
-  activeTab,
-  setActiveTab,
-  onFabClick,
-}: NeoBottomNavProps) => {
-  // 1. Built-in Scroll Logic (No extra file needed)
+export const NeoBottomNav = () => {
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
 
+  // Configuration: Grouping Navigation Tabs
+  const navTabs = [
+    { id: "home", href: "/", icon: Home, label: "Home" },
+    { id: "issues", href: "/issues", icon: FileText, label: "Issues" },
+    { id: "profile", href: "/profile", icon: User, label: "Profile" },
+  ];
+
+  // Scroll Hide/Show Logic
   useEffect(() => {
     let lastScrollY = window.scrollY;
     const updateScrollDirection = () => {
       const scrollY = window.scrollY;
       const direction = scrollY > lastScrollY ? "down" : "up";
 
-      // Hide if scrolling down more than 10px, Show if scrolling up
       if (direction === "down" && scrollY > 10) {
         setIsVisible(false);
       } else if (direction === "up") {
@@ -46,7 +37,7 @@ export const NeoBottomNav = ({
   }, []);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-6">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none pb-6 px-4">
       <AnimatePresence>
         {isVisible && (
           <motion.div
@@ -54,37 +45,34 @@ export const NeoBottomNav = ({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 25 }}
-            className="pointer-events-auto bg-white border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-1.5 flex items-center gap-1 w-full max-w-sm h-16"
+            className="flex items-end gap-3 w-full max-w-sm pointer-events-auto"
           >
-            {/* LEFT TABS */}
-            {tabs.slice(0, 2).map((tab) => (
-              <NavTab
-                key={tab.id}
-                tab={tab}
-                isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              />
-            ))}
+            {/* 1. LEFT CAPSULE: Navigation (Home, Issues, Profile) */}
+            <div className="flex-1 bg-white border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-1.5 flex items-center gap-1 h-16">
+              {navTabs.map((tab) => (
+                <NavTab
+                  key={tab.id}
+                  tab={tab}
+                  isActive={pathname === tab.href}
+                />
+              ))}
+            </div>
 
-            {/* CENTER ACTION BUTTON */}
-            <motion.button
-              onClick={onFabClick}
-              whileTap={{ scale: 0.9 }}
-              className="relative w-12 h-full bg-[#CBACF9] border-2 border-black rounded-xl flex items-center justify-center shrink-0 mx-1 overflow-hidden group active:bg-[#b08adb]"
-            >
-              <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-              <Plus className="w-6 h-6 text-black" strokeWidth={3} />
-            </motion.button>
+            {/* 2. RIGHT BUTTON: Report Action (Big & Distinct) */}
+            <Link href="/report" className="group">
+              <motion.div
+                whileTap={{ scale: 0.9 }}
+                className="w-16 h-16 bg-[#CBACF9] border-2 border-black rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center relative overflow-hidden active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all"
+              >
+                {/* Shine Effect */}
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
 
-            {/* RIGHT TABS */}
-            {tabs.slice(2, 4).map((tab) => (
-              <NavTab
-                key={tab.id}
-                tab={tab}
-                isActive={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-              />
-            ))}
+                <Plus
+                  className="w-8 h-8 text-black group-hover:rotate-90 transition-transform duration-300"
+                  strokeWidth={3}
+                />
+              </motion.div>
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>
@@ -92,20 +80,18 @@ export const NeoBottomNav = ({
   );
 };
 
-// --- SUB COMPONENT ---
-const NavTab = ({ tab, isActive, onClick }: any) => {
+// --- SUB COMPONENT (Nav Tab) ---
+const NavTab = ({ tab, isActive }: any) => {
   return (
-    <button
-      onClick={onClick}
-      // "flex-[2]" makes the button expand when active
+    <Link
+      href={tab.href}
       className={`relative flex items-center justify-center h-full rounded-xl transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-        isActive ? "flex-[2.5]" : "flex-1"
+        isActive ? "flex-[2]" : "flex-1"
       }`}
     >
       {isActive && (
         <motion.div
           layoutId="active-bg"
-          // FIXED: Yellow Background instead of Black
           className="absolute inset-0 bg-[#FFDE59] border-2 border-black rounded-xl"
           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
         />
@@ -120,7 +106,6 @@ const NavTab = ({ tab, isActive, onClick }: any) => {
           }`}
         />
 
-        {/* Text Label - Shows smoothly when active */}
         <AnimatePresence>
           {isActive && (
             <motion.span
@@ -134,6 +119,6 @@ const NavTab = ({ tab, isActive, onClick }: any) => {
           )}
         </AnimatePresence>
       </div>
-    </button>
+    </Link>
   );
 };
