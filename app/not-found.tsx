@@ -2,30 +2,30 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Home, ArrowLeft, AlertTriangle, Construction } from "lucide-react";
+import { Home, ArrowLeft, Ghost, Map, Footprints } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[#FFFDF5] text-black font-sans flex flex-col items-center justify-center relative overflow-hidden selection:bg-red-400">
-      {/* 1. BACKGROUND NOISE & GRID */}
+    <div className="min-h-screen bg-[#FFFDF5] text-black font-sans flex flex-col items-center justify-center relative overflow-hidden selection:bg-[#CBACF9]">
+      {/* 1. BACKGROUND DOODLES (Animated Grid) */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-[0.04]"
+        className="fixed inset-0 pointer-events-none opacity-[0.05]"
         style={{
-          backgroundImage: "radial-gradient(#000 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(#000 1.5px, transparent 1.5px)",
           backgroundSize: "24px 24px",
         }}
       ></div>
 
-      {/* 2. INFINITE MARQUEE (Top & Bottom) */}
-      <div className="absolute top-0 left-0 right-0 bg-black text-[#FFDE59] py-2 overflow-hidden border-b-2 border-black rotate-1 scale-105 z-0">
+      {/* 2. TOP MARQUEE (Tilted & Fast) */}
+      <div className="absolute top-12 -left-10 -right-10 bg-[#FFDE59] text-black py-3 border-y-2 border-black rotate-3 z-0 shadow-sm transform origin-left">
         <motion.div
-          className="whitespace-nowrap font-black uppercase tracking-widest text-xs flex gap-4"
+          className="whitespace-nowrap font-black uppercase tracking-widest text-xs flex gap-8"
           animate={{ x: [0, -1000] }}
-          transition={{ repeat: Infinity, ease: "linear", duration: 20 }}
+          transition={{ repeat: Infinity, ease: "linear", duration: 15 }}
         >
-          {Array(20)
+          {Array(10)
             .fill(
-              "PAGE NOT FOUND • LOST IN THE HALLWAY • ERROR 404 • WHERE ARE YOU? • "
+              "👻 GHOST TOWN • 404 ERROR • NOTHING TO SEE HERE 👀 • TURN BACK NOW 🛑 • WHOOPSIE 🤪 • "
             )
             .map((text, i) => (
               <span key={i}>{text}</span>
@@ -33,66 +33,76 @@ export default function NotFound() {
         </motion.div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-black text-[#FFDE59] py-2 overflow-hidden border-t-2 border-black -rotate-1 scale-105 z-0">
+      {/* 3. BOTTOM MARQUEE (Tilted opposite way) */}
+      <div className="absolute bottom-12 -left-10 -right-10 bg-[#CBACF9] text-black py-3 border-y-2 border-black -rotate-3 z-0 shadow-sm transform origin-right">
         <motion.div
-          className="whitespace-nowrap font-black uppercase tracking-widest text-xs flex gap-4"
+          className="whitespace-nowrap font-black uppercase tracking-widest text-xs flex gap-8"
           animate={{ x: [-1000, 0] }}
-          transition={{ repeat: Infinity, ease: "linear", duration: 20 }}
+          transition={{ repeat: Infinity, ease: "linear", duration: 15 }}
         >
-          {Array(20)
-            .fill("GO BACK HOME • WRONG TURN • SYSTEM FAULT • FIX MY CAMPUS • ")
+          {Array(10)
+            .fill(
+              "LOST IN SPACE 🚀 • PAGE SKIPPED CLASS 🏃‍♂️ • SYSTEM OOPSIE • RETURN TO BASE 🏠 • "
+            )
             .map((text, i) => (
               <span key={i}>{text}</span>
             ))}
         </motion.div>
       </div>
 
-      {/* 3. MAIN CONTENT CARD */}
+      {/* 4. MAIN CONTENT CARD */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", bounce: 0.5 }}
-        className="relative z-10 max-w-sm w-full px-5"
+        initial={{ scale: 0.8, opacity: 0, rotate: 5 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        transition={{ type: "spring", bounce: 0.6 }}
+        className="relative z-10 w-full max-w-sm px-6"
       >
-        <div className="bg-white border-2 border-black rounded-3xl p-8 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
-          {/* Floating Icons */}
+        <div className="bg-white border-2 border-black rounded-3xl p-8 text-center shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] relative">
+          {/* Floating Stickers */}
           <motion.div
-            animate={{ y: [-10, 10, -10], rotate: [0, 10, -10, 0] }}
+            animate={{ y: [-10, 5, -10], rotate: [0, 15, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-8 -left-8 bg-yellow-300 p-3 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="absolute -top-8 -left-6 bg-pink-300 p-3 rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] -rotate-12"
           >
-            <Construction className="w-8 h-8" strokeWidth={2.5} />
+            <Ghost className="w-8 h-8 text-black" strokeWidth={2.5} />
           </motion.div>
 
           <motion.div
-            animate={{ y: [10, -10, 10], rotate: [0, -10, 10, 0] }}
+            animate={{ y: [5, -10, 5], rotate: [0, -15, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -bottom-6 -right-6 bg-red-300 p-3 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
+            className="absolute -bottom-6 -right-4 bg-blue-300 p-3 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rotate-12"
           >
-            <AlertTriangle className="w-8 h-8" strokeWidth={2.5} />
+            <Map className="w-8 h-8 text-black" strokeWidth={2.5} />
           </motion.div>
 
-          {/* THE GIANT 404 */}
-          <div className="font-black text-9xl tracking-tighter leading-none mb-2 relative inline-block">
-            <span className="relative z-10">404</span>
-            <span className="absolute top-1 left-1 text-gray-300 -z-10 select-none">
+          {/* THE BIG 404 */}
+          <div className="relative inline-block mb-4 mt-4">
+            <h1 className="text-9xl font-black tracking-tighter leading-none text-black select-none relative z-10">
+              4<span className="text-[#FFDE59]">0</span>4
+            </h1>
+
+            {/* Eyes inside the Zero */}
+            <motion.div
+              animate={{ x: [-2, 2, -2] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-1 z-20"
+            >
+              <div className="w-3 h-3 bg-black rounded-full" />
+              <div className="w-3 h-3 bg-black rounded-full" />
+            </motion.div>
+
+            {/* Shadow Text */}
+            <span className="absolute top-1 left-1 text-9xl font-black tracking-tighter leading-none text-gray-200 -z-10">
               404
             </span>
-
-            {/* Glitch Line */}
-            <motion.div
-              className="absolute top-1/2 left-0 right-0 h-1 bg-black"
-              animate={{ scaleX: [1, 1.2, 0.8, 1], opacity: [1, 0, 1] }}
-              transition={{ repeat: Infinity, duration: 0.2, repeatDelay: 3 }}
-            />
           </div>
 
-          <h1 className="text-2xl font-black uppercase tracking-tight mb-2">
-            Wrong Turn?
-          </h1>
-          <p className="text-sm font-bold text-gray-500 mb-8 leading-relaxed">
-            We can't find the page you're looking for. It might have been fixed
-            already (or stolen).
+          <h2 className="text-2xl font-black uppercase tracking-tighter mb-2">
+            Dude, You're Lost 🗺️
+          </h2>
+          <p className="text-sm font-bold text-gray-500 mb-8 leading-relaxed px-4">
+            We looked everywhere (even under the bed) but we couldn't find this
+            page.
           </p>
 
           {/* BUTTONS */}
@@ -101,19 +111,19 @@ export default function NotFound() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-full bg-[#CBACF9] border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-[3px] transition-all"
+                className="w-full bg-black text-white border-2 border-transparent rounded-xl py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_#CBACF9] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
               >
-                <Home className="w-5 h-5" strokeWidth={2.5} />
-                Go Home
+                <Home className="w-5 h-5" />
+                Home
               </motion.button>
             </Link>
 
             <button
               onClick={() => window.history.back()}
-              className="w-full bg-white border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50 active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] active:translate-y-[3px] transition-all"
+              className="w-full bg-white text-black border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-gray-50 active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
             >
-              <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
-              Go Back
+              <Footprints className="w-5 h-5" strokeWidth={2.5} />
+              GO Back
             </button>
           </div>
         </div>
