@@ -22,9 +22,9 @@ export const NeoHeader = ({ activeTab, setActiveTab }: NeoHeaderProps) => {
     <header className="w-full border-b-2 border-black bg-[#FFFDF5] z-40">
       <div className="mx-auto flex h-16 md:h-24 max-w-7xl items-center justify-between px-3 md:px-8">
         {/* --- LEFT SIDE: LOGO & BRAND --- */}
-        <div className="flex items-center gap-0 md:gap-3">
+        <div className="flex items-center gap-1 md:gap-3">
           {/* LOGO */}
-          <div className="relative h-20 w-20 shrink-0 ">
+          <div className="relative h-12 w-12 md:h-20 md:w-20 shrink-0 ">
             <Image
               src="/logo.png"
               alt="FixMyCampus Logo"
