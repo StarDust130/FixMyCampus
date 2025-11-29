@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   Loader2,
-  Calendar,
   Briefcase,
   Activity,
   Trash2,
@@ -24,7 +23,7 @@ import { NeoHeader } from "@/components/NeoHeader";
 import { NeoBottomNav } from "@/components/NeoBottomNav";
 import { NeoCard } from "@/components/NeoCards";
 
-// --- HELPERS (Kept local for single file export) ---
+// --- HELPERS (Keep local) ---
 const formatDate = (dateString: string) => {
   if (!dateString) return "Just now";
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -55,7 +54,7 @@ const categories = [
   "Cleaning",
 ];
 
-// --- 1. MAIN PAGE COMPONENT ---
+// --- MAIN PAGE COMPONENT ---
 export default function IssuesPage() {
   const [issues, setIssues] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +64,7 @@ export default function IssuesPage() {
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // --- FETCH DATA ---
+  // --- INITIALIZATION ---
   const refreshData = async () => {
     setIsLoading(true);
     try {
@@ -80,7 +79,6 @@ export default function IssuesPage() {
   };
 
   useEffect(() => {
-    // 1. Get or Create Local User ID (for ownership check)
     let userId = localStorage.getItem("fmc_user_id");
     if (!userId) {
       userId = "user_" + Math.random().toString(36).substr(2, 9);
@@ -95,13 +93,10 @@ export default function IssuesPage() {
     const matchesSearch = issue.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-
-    // Strict Owner Check
     const matchesUser =
       viewMode === "mine"
         ? currentUserId && issue.userId === currentUserId
         : true;
-
     let matchesCategory = true;
     if (activeFilter !== "All") {
       if (activeFilter === "Critical")
@@ -127,7 +122,7 @@ export default function IssuesPage() {
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border-2 border-black rounded-xl py-3 pl-10 pr-4 font-bold outline-none shadow-sm focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all placeholder:text-gray-400"
+                className="w-full bg-white border-2 border-black rounded-xl py-3 pl-10 pr-4 font-bold outline-none shadow-sm focus:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all placeholder:text-gray-400 text-sm"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
@@ -146,7 +141,6 @@ export default function IssuesPage() {
               />
             </button>
           </div>
-
           <div className="w-full overflow-x-auto no-scrollbar">
             <div className="flex gap-2 w-max px-1 pb-1">
               {categories.map((cat) => (
@@ -167,7 +161,7 @@ export default function IssuesPage() {
         </div>
 
         {/* --- LIST CONTENT --- */}
-        <div className="p-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="p-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {isLoading ? (
             [1, 2, 3, 4, 5, 6].map((i) => <IssueCardSkeleton key={i} />)
           ) : (
@@ -269,13 +263,13 @@ export default function IssuesPage() {
   );
 }
 
-// --- NEW: PROFESSIONAL SKELETON LOADER (Reused for quick loading UI) ---
+// --- NEW: PROFESSIONAL SKELETON LOADER ---
 const IssueCardSkeleton = () => {
   return (
     <div className="bg-white border-2 border-black/10 rounded-2xl p-0 overflow-hidden h-48 animate-pulse">
       <div className="p-4 flex justify-between">
         <div className="w-16 h-6 bg-gray-200 rounded-md" />
-        <div className="w-10 h-4 bg-gray-200 rounded-md" />
+        <div className-="w-10 h-4 bg-gray-200 rounded-md" />
       </div>
       <div className="px-4 space-y-2">
         <div className="w-3/4 h-6 bg-gray-200 rounded-md" />
@@ -292,7 +286,7 @@ const IssueCardSkeleton = () => {
 // --- MODAL SUB-COMPONENT (Contains Edit/Delete Logic) ---
 const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
   const statusInfo = getStatusConfig(issue.status);
-  const isOwner = currentUserId && issue.userId === currentUserId;
+  const isReportOwner = currentUserId && issue.userId === currentUserId;
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -349,7 +343,7 @@ const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         onClick={(e) => e.stopPropagation()}
-        // Fix for Mobile UI: ensure responsive height and margin
+        // Optimized mobile responsiveness
         className="bg-[#FFFDF5] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col h-[85vh] sm:h-auto sm:max-h-[90vh]"
       >
         {/* 1. Header Image */}
@@ -464,7 +458,7 @@ const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
                 </div>
 
                 {/* 🟢 OWNER ACTIONS (Edit/Delete) */}
-                {isOwner && (
+                {isReportOwner && (
                   <div className="flex gap-2 shrink-0 ml-2">
                     <button
                       onClick={() => setIsEditing(true)}
@@ -505,7 +499,7 @@ const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
                       Owner
                     </p>
                     <p className="text-xs font-black">
-                      {isOwner ? "YOU" : "Student"}
+                      {isReportOwner ? "YOU" : "Student"}
                     </p>
                   </div>
                 </div>
