@@ -25,7 +25,6 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 
-// ... [Keep CATEGORIES array same as before] ...
 const CATEGORIES = [
   {
     id: "Furniture",
@@ -41,15 +40,18 @@ const CATEGORIES = [
 ];
 
 export default function ReportPage() {
+  // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("Other");
   const [image, setImage] = useState<string | null>(null);
 
+  // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // Vision AI Status
   const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false); // Whisper Status
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -59,44 +61,60 @@ export default function ReportPage() {
 
   // --- LOCAL AUTH LOGIC ---
   useEffect(() => {
-    // Check if user ID exists, if not create one
     if (!localStorage.getItem("fmc_user_id")) {
       const newId = "user_" + Math.random().toString(36).substr(2, 9);
       localStorage.setItem("fmc_user_id", newId);
     }
-  }, []);
+    // Auto-dismiss toast
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
-  // ... [Keep handleImage and toggleRecording logic same as before] ...
-  // (Just ensuring handleImage calls the AI API and handles errors gracefully)
-
+  // --- 1. HANDLE IMAGE & AI VISION (FAST UI) ---
   const handleImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
+
       reader.onloadend = async () => {
         const base64 = reader.result as string;
-        setImage(base64);
-        setIsAnalyzing(true);
+        setImage(base64); // Show preview immediately (Optimistic UI)
+
+        setIsAnalyzing(true); // Start non-blocking indicator
         try {
           const res = await fetch("/api/analyze-image", {
             method: "POST",
             body: JSON.stringify({ imageBase64: base64 }),
           });
+
           if (!res.ok) throw new Error("AI Failed");
           const data = await res.json();
-          if (data.title && data.title !== "null") setTitle(data.title);
-          if (data.description && data.description !== "null")
+
+          // Smart Fill: Check for null/empty and overwrite only if value is better
+          if (data.title && data.title !== "null" && !title)
+            setTitle(data.title);
+          if (
+            data.description &&
+            data.description !== "null" &&
+            description.length < 10
+          )
             setDescription(data.description);
+
           if (data.category) {
             const matchedCat = CATEGORIES.find(
               (c) => c.id.toLowerCase() === data.category.toLowerCase()
             );
             if (matchedCat) setCategory(matchedCat.id);
           }
-          setToast({ message: "AI Analysis Complete", type: "success" });
+          setToast({ message: "AI Analysis Complete!", type: "success" });
         } catch (err) {
-          // Silently fail or simple toast, don't block user
-          console.log("AI skipped or failed");
+          console.error("AI Error", err);
+          setToast({
+            message: "AI Analysis Failed: Type Manually",
+            type: "error",
+          });
         } finally {
           setIsAnalyzing(false);
         }
@@ -105,9 +123,8 @@ export default function ReportPage() {
     }
   };
 
+  // --- 2. HANDLE AUDIO RECORDING (WHISPER) ---
   const toggleRecording = async () => {
-    // ... same recording logic as previous response ...
-    // Just ensure error handling is safe
     if (isRecording) {
       mediaRecorderRef.current?.stop();
       setIsRecording(false);
@@ -119,35 +136,44 @@ export default function ReportPage() {
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
         const audioChunks: Blob[] = [];
+
         mediaRecorder.ondataavailable = (event) => audioChunks.push(event.data);
+
         mediaRecorder.onstop = async () => {
           const audioBlob = new Blob(audioChunks, { type: "audio/mp4" });
           const formData = new FormData();
           formData.append("file", audioBlob, "audio.mp4");
-          setToast({ message: "Transcribing...", type: "success" });
+
+          setIsTranscribing(true); // Start transcription loader
           try {
             const res = await fetch("/api/transcribe", {
               method: "POST",
               body: formData,
             });
+            if (!res.ok) throw new Error("Transcription Failed");
+
             const data = await res.json();
             if (data.text)
               setDescription((prev) =>
                 prev ? prev + " " + data.text : data.text
               );
-          } catch {
-            setToast({ message: "Transcribe failed", type: "error" });
+            setToast({ message: "Voice input processed!", type: "success" });
+          } catch (err) {
+            setToast({ message: "Could not process voice.", type: "error" });
+          } finally {
+            setIsTranscribing(false);
           }
         };
+
         mediaRecorder.start();
         setIsRecording(true);
-      } catch {
-        setToast({ message: "Mic blocked", type: "error" });
+      } catch (err) {
+        setToast({ message: "Microphone access denied.", type: "error" });
       }
     }
   };
 
-  // --- UPDATED SUBMIT ---
+  // --- 3. SUBMIT TO DB ---
   const handleSubmit = async () => {
     if (!title || !description) {
       setToast({ message: "Title & Description required", type: "error" });
@@ -155,7 +181,7 @@ export default function ReportPage() {
     }
 
     setIsSubmitting(true);
-    const userId = localStorage.getItem("fmc_user_id"); // Get ID
+    const userId = localStorage.getItem("fmc_user_id");
 
     try {
       const res = await fetch("/api/reports", {
@@ -167,14 +193,13 @@ export default function ReportPage() {
           category,
           location,
           imageUrl: image,
-          userId, // Send ID
+          userId,
         }),
       });
 
-      if (!res.ok) throw new Error("Failed");
+      if (!res.ok) throw new Error("Failed to save report.");
 
       setToast({ message: "Submitted Successfully!", type: "success" });
-      // Optional: Redirect after delay
       setTimeout(() => (window.location.href = "/issues"), 1000);
     } catch (err) {
       setToast({ message: "Network Error - Try Again", type: "error" });
@@ -183,12 +208,17 @@ export default function ReportPage() {
     }
   };
 
+  // Helper for typing animation
+  const typingPlaceholder = (text: string) =>
+    isAnalyzing || isTranscribing ? text : "Describe the issue...";
+
+  const titlePlaceholder = isAnalyzing
+    ? "AI is typing..."
+    : "e.g. Broken Chair";
+
   return (
     <div className="min-h-screen bg-[#FFFDF5] text-black font-sans pb-32 relative">
-      {/* ... [Rest of UI exactly as previous response] ... */}
-      {/* Just ensure to copy the Toast, Header, Main Form, and Footer from previous code */}
-
-      {/* Toast Component */}
+      {/* TOAST NOTIFICATION */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -213,7 +243,7 @@ export default function ReportPage() {
         )}
       </AnimatePresence>
 
-      {/* Rest of the form UI from previous answer goes here... */}
+      {/* HEADER */}
       <header className="sticky top-0 left-0 right-0 z-50 flex items-center justify-between px-5 h-16 bg-[#FFFDF5]/90 backdrop-blur-md border-b-2 border-black">
         <Link href="/" className="p-2 -ml-2 hover:bg-black/5 rounded-full">
           <ArrowLeft className="w-6 h-6" strokeWidth={3} />
@@ -224,11 +254,11 @@ export default function ReportPage() {
         <div className="w-8" />
       </header>
 
-      <main className="pt-6 px-5 max-w-lg mx-auto space-y-6">
-        {/* ... Camera Card & Inputs ... (Same as previous code) */}
-        <div className="bg-white p-4 rounded-3xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+      <main className="pt-6 px-4 max-w-lg mx-auto space-y-5">
+        {/* --- 1. MEDIA CARD (COMPACT MOBILE FIX) --- */}
+        <div className="bg-white p-3 rounded-3xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           {image ? (
-            <div className="relative w-full h-48 rounded-xl overflow-hidden border-2 border-black bg-black">
+            <div className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-black bg-black group">
               <Image
                 src={image}
                 alt="Evidence"
@@ -237,22 +267,24 @@ export default function ReportPage() {
               />
               <button
                 onClick={() => setImage(null)}
-                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full border-2 border-black"
+                className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full border-2 border-black z-20"
               >
                 <X className="w-4 h-4" />
               </button>
               {isAnalyzing && (
-                <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center text-white backdrop-blur-sm">
-                  <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                  <span className="font-bold text-xs uppercase tracking-widest">
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white backdrop-blur-sm z-10">
+                  <ScanEye className="w-8 h-8 animate-pulse mb-2 text-[#FFDE59]" />
+                  <span className="font-black text-[10px] uppercase tracking-widest">
                     Scanning...
                   </span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex gap-3 h-32">
-              <label className="flex-1 bg-[#A2E2F9] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all">
+            // Compact Buttons: h-24
+            <div className="flex gap-3 h-24">
+              {/* CAMERA BUTTON */}
+              <label className="flex-1 bg-[#A2E2F9] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all shadow-sm">
                 <input
                   type="file"
                   accept="image/*"
@@ -260,17 +292,18 @@ export default function ReportPage() {
                   className="hidden"
                   onChange={handleImage}
                 />
-                <Camera className="w-8 h-8 mb-1" strokeWidth={2.5} />
+                <Camera className="w-6 h-6 mb-1" strokeWidth={2.5} />
                 <span className="text-[10px] font-black uppercase">Camera</span>
               </label>
-              <label className="flex-1 bg-[#FFB7B2] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all">
+              {/* GALLERY BUTTON */}
+              <label className="flex-1 bg-[#FFB7B2] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all shadow-sm">
                 <input
                   type="file"
                   accept="image/*"
                   className="hidden"
                   onChange={handleImage}
                 />
-                <ImageIcon className="w-8 h-8 mb-1" strokeWidth={2.5} />
+                <ImageIcon className="w-6 h-6 mb-1" strokeWidth={2.5} />
                 <span className="text-[10px] font-black uppercase">
                   Gallery
                 </span>
@@ -279,7 +312,9 @@ export default function ReportPage() {
           )}
         </div>
 
+        {/* --- 2. FORM FIELDS --- */}
         <div className="space-y-4">
+          {/* Title (Non-Blocking AI Feedback) */}
           <div>
             <label className="text-xs font-black uppercase ml-1 text-gray-500">
               Title
@@ -287,12 +322,13 @@ export default function ReportPage() {
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder={
-                isAnalyzing ? "AI is typing..." : "e.g. Broken Chair"
-              }
-              className="w-full bg-white border-2 border-black rounded-xl p-4 font-bold outline-none shadow-sm transition-all"
+              placeholder={titlePlaceholder}
+              disabled={isAnalyzing}
+              className="w-full bg-white border-2 border-black rounded-xl p-3 text-sm font-bold outline-none shadow-sm focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all placeholder:font-normal placeholder:text-gray-300 disabled:opacity-50"
             />
           </div>
+
+          {/* Category Chips */}
           <div>
             <label className="text-xs font-black uppercase ml-1 text-gray-500">
               Category
@@ -302,11 +338,12 @@ export default function ReportPage() {
                 <button
                   key={cat.id}
                   onClick={() => setCategory(cat.id)}
+                  disabled={isAnalyzing}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg border-2 border-black text-xs font-black uppercase whitespace-nowrap transition-all ${
                     category === cat.id
                       ? `${cat.color} shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] translate-y-px`
-                      : "bg-white"
-                  }`}
+                      : "bg-white shadow-sm active:scale-95"
+                  } disabled:opacity-50`}
                 >
                   <cat.icon className="w-3 h-3" />
                   {cat.label}
@@ -314,6 +351,8 @@ export default function ReportPage() {
               ))}
             </div>
           </div>
+
+          {/* Location */}
           <div>
             <label className="text-xs font-black uppercase ml-1 text-gray-500">
               Location
@@ -323,53 +362,71 @@ export default function ReportPage() {
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Room No / Area"
-                className="w-full bg-white border-2 border-black rounded-xl p-4 pl-12 font-bold outline-none shadow-sm transition-all"
+                disabled={isAnalyzing}
+                className="w-full bg-white border-2 border-black rounded-xl p-3 pl-12 text-sm font-bold outline-none shadow-sm focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all placeholder:font-normal placeholder:text-gray-300 disabled:opacity-50"
               />
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             </div>
           </div>
-          <div className="relative">
-            <label className="text-xs font-black uppercase ml-1 text-gray-500">
-              Description
-            </label>
-            <textarea
-              rows={4}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={
-                isAnalyzing ? "AI is analyzing..." : "Describe the issue..."
-              }
-              className="w-full bg-white border-2 border-black rounded-xl p-4 pr-14 font-bold outline-none shadow-sm resize-none"
-            />
-            <button
-              onClick={toggleRecording}
-              className={`absolute bottom-3 right-3 p-2 rounded-lg border-2 border-black transition-all ${
-                isRecording
-                  ? "bg-red-500 text-white animate-pulse"
-                  : "bg-[#FFDE59] text-black"
-              }`}
-            >
-              {isRecording ? (
-                <StopCircle className="w-5 h-5" />
-              ) : (
-                <Mic className="w-5 h-5" />
+
+          {/* Description + Voice Mic */}
+          <div>
+            <label className="text-xs font-black uppercase ml-1 text-gray-500 flex justify-between items-center pr-1">
+              <span>Description</span>
+              {isRecording && (
+                <span className="text-red-500 animate-pulse font-bold text-[10px]">
+                  ● REC
+                </span>
               )}
-            </button>
+              {isTranscribing && (
+                <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+              )}
+            </label>
+            <div className="relative">
+              <textarea
+                rows={4}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={
+                  isAnalyzing ? "AI is analyzing..." : "Describe the issue..."
+                }
+                disabled={isAnalyzing}
+                className="w-full bg-white border-2 border-black rounded-xl p-3 pr-12 text-sm font-bold outline-none shadow-sm focus:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all resize-none placeholder:font-normal placeholder:text-gray-300 disabled:opacity-50"
+              />
+
+              {/* MIC BUTTON */}
+              <button
+                onClick={toggleRecording}
+                disabled={isAnalyzing}
+                className={`absolute bottom-3 right-3 p-2 rounded-lg border-2 border-black transition-all shadow-sm ${
+                  isRecording
+                    ? "bg-red-500 text-white animate-pulse"
+                    : "bg-[#FFDE59] text-black hover:scale-110 active:scale-90"
+                } disabled:opacity-50`}
+              >
+                {isRecording ? (
+                  <StopCircle className="w-4 h-4" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </main>
 
+      {/* FOOTER */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#FFFDF5] border-t-2 border-black z-40">
         <button
           onClick={handleSubmit}
-          disabled={isSubmitting || isAnalyzing}
-          className="w-full md:w-100 md:mx-auto bg-[#CBACF9] text-black border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          disabled={isSubmitting || isAnalyzing || isTranscribing}
+          className="w-full bg-[#CBACF9] text-black border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting ? (
             <Loader2 className="animate-spin" />
           ) : (
             <UploadCloud />
-          )}{" "}
+          )}
           Submit Report
         </button>
       </div>
