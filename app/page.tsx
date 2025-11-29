@@ -1,314 +1,407 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   MapPin,
   AlertTriangle,
-  Clock,
-  Home,
   Plus,
-  X,
-  Filter,
   ChevronRight,
+  ArrowUpRight,
+  CheckCircle2,
+  ThumbsUp,
+  MessageSquare,
+  Activity,
+  BellRing,
+  Zap,
+  Droplets,
+  Armchair,
+  Wifi,
 } from "lucide-react";
+import Link from "next/link";
 
 import { NeoBottomNav } from "@/components/NeoBottomNav";
-import { NeoHeader } from "@/components/NeoHeader"; // New
-import { NeoEmptyState } from "@/components/NeoEmptyState"; // New
-import { NeoMarquee } from "@/components/NeoMarquee"; // New
+import { NeoHeader } from "@/components/NeoHeader";
+import { NeoMarquee } from "@/components/NeoMarquee";
 import { NeoCard } from "@/components/NeoCards";
 
-// --- Mock Data (Set to empty array [] to test Empty State) ---
-const mockIssues = [
+// --- HELPER: Time Ago ---
+const getTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+
+// --- HELPER: Random Avatar ---
+const getAvatar = (seed: string) =>
+  `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}&backgroundColor=FFDE59,FFB7B2,A2E2F9`;
+
+// --- DATA: Quick Actions (Now with Links) ---
+const quickActions = [
   {
-    id: 1,
-    title: "Broken Chair",
-    category: "Furniture",
-    status: "Critical",
-    location: "Library, 2nd Floor",
-    date: "2 mins ago",
-    color: "orange" as const,
-    icon: <Home className="w-6 h-6" />,
+    icon: Zap,
+    label: "Electric",
+    color: "bg-yellow-300",
+    link: "/issues?filter=Electrical",
   },
   {
-    id: 2,
-    title: "Water Leak",
-    category: "Infrastructure",
-    status: "In Progress",
-    location: "Hallway, Block B",
-    date: "1 hour ago",
-    color: "pink" as const,
-    icon: <AlertTriangle className="w-6 h-6" />,
+    icon: Droplets,
+    label: "Water",
+    color: "bg-blue-300",
+    link: "/issues?filter=Plumbing",
   },
   {
-    id: 3,
-    title: "AC Not Cooling",
-    category: "Electrical",
-    status: "Pending",
-    location: "Lab 3, CS Dept",
-    date: "3 hours ago",
-    color: "blue" as const,
-    icon: <Clock className="w-6 h-6" />,
+    icon: Armchair,
+    label: "Furniture",
+    color: "bg-orange-300",
+    link: "/issues?filter=Furniture",
+  },
+  {
+    icon: Wifi,
+    label: "Wifi",
+    color: "bg-green-300",
+    link: "/issues?filter=Network",
   },
 ];
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState("home");
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-  const [filter, setFilter] = useState("All");
+  const [issues, setIssues] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({ pending: 0, resolved: 0, critical: 0 });
+
+  // FETCH REAL DATA
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/reports");
+        const data = await res.json();
+
+        if (Array.isArray(data)) {
+          setIssues(data);
+          setStats({
+            pending: data.filter((i: any) => i.status !== "Resolved").length,
+            resolved: data.filter((i: any) => i.status === "Resolved").length,
+            critical: data.filter((i: any) => i.status === "Critical").length,
+          });
+        }
+      } catch (error) {
+        console.error("Fetch error", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // HANDLE LIKE (Optimistic UI)
+  const handleLike = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault(); // Prevent navigating to details
+    e.stopPropagation();
+
+    // 1. Optimistic Update (Update UI instantly)
+    setIssues((prev) =>
+      prev.map((issue) =>
+        issue._id === id ? { ...issue, votes: (issue.votes || 0) + 1 } : issue
+      )
+    );
+
+    // 2. API Call
+    try {
+      await fetch(`/api/reports/${id}/like`, { method: "PATCH" });
+    } catch (error) {
+      console.error("Like failed");
+      // Revert if failed (optional, usually skipped for likes)
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#FFFDF5] font-sans text-black selection:bg-pink-300">
-      {/* Background Pattern */}
+    <div className="min-h-screen bg-[#FFFDF5] font-sans text-black selection:bg-pink-300 pb-36">
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-[0.03]"
+        className="fixed inset-0 pointer-events-none z-0 opacity-[0.04]"
         style={{
-          backgroundImage: "radial-gradient(#000 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
+          backgroundImage:
+            "linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
         }}
       ></div>
 
-      {/* HEADER & MARQUEE */}
-      <NeoHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+      <NeoHeader activeTab="home" />
       <NeoMarquee />
 
-      <main className="relative z-10 mx-auto max-w-7xl px-5 pb-32 pt-8">
-        {/* PC GRID LAYOUT */}
-        <div className="grid gap-8 md:grid-cols-12">
-          {/* LEFT COLUMN (Sidebar on PC) */}
-          <div className="space-y-8 md:col-span-5 lg:col-span-4 lg:space-y-10">
-            {/* HERO CTA */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-            >
-              <NeoCard
-                color="pink"
-                className="group relative flex h-52 flex-col justify-between overflow-hidden cursor-pointer transition-all hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
-                onClick={() => setIsReportModalOpen(true)}
-              >
-                <div className="relative z-10 flex justify-between items-start">
-                  <div className="rounded-xl border-2 border-black bg-white/40 p-3 backdrop-blur-md transition-transform group-hover:rotate-12">
-                    <Plus className="h-8 w-8 text-black" strokeWidth={3} />
-                  </div>
-                  <div className="rounded-full border-2 border-black bg-black px-2 py-1 text-[10px] font-bold text-white">
-                    PRIORITY HIGH
-                  </div>
-                </div>
+      <main className="relative z-10 mx-auto max-w-7xl px-5 pt-8">
+        <div className="grid gap-12 md:gap-8 md:grid-cols-12 items-start">
+          {/* === LEFT SIDEBAR === */}
+          <div className="space-y-8 md:col-span-5 lg:col-span-4 md:sticky md:top-24">
+            {/* 1. CAMPUS ALERTS */}
+            <div className="bg-white border-2 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-start gap-4">
+              <div className="bg-red-100 p-2 rounded-lg border-2 border-black animate-pulse">
+                <BellRing className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h4 className="font-black uppercase text-xs tracking-wide mb-1">
+                  Maintenance Alert
+                </h4>
+                <p className="text-xs font-bold text-gray-500 leading-tight">
+                  Power outage scheduled in Library Block from 6 PM to 7 PM.
+                </p>
+              </div>
+            </div>
 
-                <div className="relative z-10">
-                  <h3 className="text-4xl font-black leading-none tracking-tighter">
-                    REPORT <br /> ISSUE
-                  </h3>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black text-white">
+            {/* 2. HERO REPORT CTA */}
+            <Link href="/report">
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <NeoCard
+                  color="pink"
+                  className="group relative h-80 md:h-72 flex flex-col justify-between overflow-hidden cursor-pointer border-2 border-black hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] transition-all rounded-3xl"
+                >
+                  <div className="relative z-10 flex justify-between items-start p-4">
+                    <div className="bg-white border-2 border-black p-4 rounded-2xl rotate-3 group-hover:rotate-12 transition-transform shadow-sm">
+                      <Plus className="h-8 w-8 text-black" strokeWidth={3} />
+                    </div>
+                    <div className="bg-black text-white px-4 py-1.5 rounded-full border-2 border-white text-[10px] font-black uppercase tracking-widest animate-pulse">
+                      Priority Action
+                    </div>
+                  </div>
+                  <div className="relative z-10 p-4">
+                    <h3 className="text-5xl md:text-6xl font-black leading-[0.85] tracking-tighter mb-4 drop-shadow-sm">
+                      FIX IT <br /> NOW
+                    </h3>
+                    <div className="inline-flex items-center gap-3 bg-black text-white px-6 py-3 rounded-full border-2 border-transparent group-hover:bg-white group-hover:text-black group-hover:border-black transition-colors shadow-lg">
+                      <span className="text-xs font-bold uppercase tracking-widest">
+                        Open Camera
+                      </span>
                       <ChevronRight className="h-4 w-4" />
-                    </span>
-                    <p className="text-xs font-bold uppercase tracking-widest opacity-60">
-                      Start Now
-                    </p>
+                    </div>
                   </div>
-                </div>
+                  <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-[#A2E2F9] rounded-full border-2 border-black z-0 group-hover:scale-110 transition-transform opacity-100" />
+                </NeoCard>
+              </motion.div>
+            </Link>
 
-                {/* Animated Decor */}
-                <motion.div
-                  className="absolute -bottom-12 -right-8 h-48 w-48 rounded-full border-2 border-black bg-[#CBACF9] z-0"
-                  animate={{ rotate: 360, scale: [1, 1.05, 1] }}
-                  transition={{ duration: 10, repeat: Infinity }}
-                />
-              </NeoCard>
-            </motion.div>
-
-            {/* STATS ROW */}
-            <div className="grid grid-cols-2 gap-4">
-              <NeoCard
-                color="yellow"
-                className="flex flex-col items-center justify-center gap-1 py-6 hover:-translate-y-1 transition-transform"
-              >
-                <span className="text-5xl font-black tracking-tighter">12</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-black/60">
-                  Pending
-                </span>
-              </NeoCard>
-              <NeoCard
-                color="green"
-                className="flex flex-col items-center justify-center gap-1 py-6 hover:-translate-y-1 transition-transform"
-              >
-                <span className="text-5xl font-black tracking-tighter">45</span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-black/60">
-                  Resolved
-                </span>
-              </NeoCard>
+            {/* 3. STATS GRID */}
+            <div className="grid grid-cols-2 gap-6 mt-4">
+              <StatCard
+                label="Pending"
+                value={stats.pending}
+                color="bg-yellow-300"
+              />
+              <StatCard
+                label="Resolved"
+                value={stats.resolved}
+                color="bg-green-300"
+              />
             </div>
           </div>
 
-          {/* RIGHT COLUMN (Feed Area) */}
-          <div className="md:col-span-7 lg:col-span-8">
-            {/* Feed Header & Filters */}
-            <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
-              <div>
-                <h2 className="text-3xl font-black uppercase italic tracking-tighter">
-                  Recent Updates
-                </h2>
-                <p className="text-sm font-semibold text-gray-500">
-                  What's happening around campus
-                </p>
-              </div>
-
-              {/* Filter Chips */}
-              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-                {["All", "Critical", "Furniture", "Tech"].map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`rounded-full border-2 border-black px-3 py-1 text-xs font-bold uppercase transition-all ${
-                      filter === f
-                        ? "bg-black text-white"
-                        : "bg-white hover:bg-gray-100"
-                    }`}
-                  >
-                    {f}
-                  </button>
+          {/* === RIGHT MAIN FEED === */}
+          <div className="md:col-span-7 lg:col-span-8 space-y-10">
+            {/* 4. QUICK ACCESS (Working Links) */}
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 ml-1">
+                Quick Access
+              </h3>
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+                {quickActions.map((action) => (
+                  <Link key={action.label} href={action.link}>
+                    <div className="flex flex-col items-center gap-2 min-w-[80px] group">
+                      <div
+                        className={`w-16 h-16 ${action.color} border-2 border-black rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] group-active:translate-y-1 group-active:shadow-none transition-all cursor-pointer`}
+                      >
+                        <action.icon className="w-7 h-7" strokeWidth={2.5} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase">
+                        {action.label}
+                      </span>
+                    </div>
+                  </Link>
                 ))}
               </div>
             </div>
 
-            {/* FEED CONTENT */}
-            <div className="space-y-4">
-              {mockIssues.length > 0 ? (
-                mockIssues.map((issue) => (
+            {/* FEED HEADER */}
+            <div className="flex items-end justify-between border-b-2 border-black/10 pb-4">
+              <div>
+                <h2 className="text-5xl font-black uppercase italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-black to-gray-600">
+                  The Feed
+                </h2>
+                <p className="text-sm font-bold uppercase tracking-widest text-gray-500 mt-1">
+                  Real-time issue tracking
+                </p>
+              </div>
+              <Link
+                href="/issues"
+                className="hidden sm:flex items-center gap-2 text-xs font-black uppercase hover:underline bg-[#FFDE59] px-4 py-2 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-px hover:shadow-none transition-all"
+              >
+                View All <ArrowUpRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            {/* ISSUES FEED */}
+            <div className="space-y-8">
+              {isLoading ? (
+                [1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-64 rounded-3xl border-2 border-black/5 bg-white animate-pulse"
+                  />
+                ))
+              ) : issues.length > 0 ? (
+                issues.map((issue, index) => (
                   <motion.div
-                    key={issue.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    whileHover={{ scale: 1.01 }}
+                    key={issue._id}
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
                   >
-                    <NeoCard
-                      color="white"
-                      className="flex items-center gap-4 p-4 transition-shadow hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]"
-                    >
-                      {/* Icon */}
-                      <div
-                        className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-black shadow-sm ${
-                          issue.color === "orange"
-                            ? "bg-orange-300"
-                            : issue.color === "pink"
-                            ? "bg-pink-300"
-                            : "bg-blue-300"
-                        }`}
+                    <Link href="/issues">
+                      <NeoCard
+                        color="white"
+                        className="p-0 flex flex-col transition-all hover:translate-x-1 hover:-translate-y-1 hover:shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] border-2 border-black group rounded-3xl overflow-hidden"
                       >
-                        {issue.icon}
-                      </div>
-
-                      {/* Content */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between">
-                          <h4 className="mr-2 truncate text-lg font-black leading-tight">
-                            {issue.title}
-                          </h4>
-                          <span
-                            className={`rounded border border-black px-2 py-0.5 text-[10px] font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${
-                              issue.status === "Critical"
-                                ? "bg-red-400 text-white"
-                                : "bg-[#FFDE59]"
-                            }`}
-                          >
-                            {issue.status}
+                        {/* Header Stripe */}
+                        <div className="px-6 py-4 border-b-2 border-black flex justify-between items-center bg-gray-50 group-hover:bg-[#FFFDF5] transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className="relative">
+                              <img
+                                src={getAvatar(issue._id)}
+                                alt="User"
+                                className="w-8 h-8 rounded-full border-2 border-black bg-white"
+                              />
+                              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border border-black" />
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black uppercase">
+                                Student
+                              </span>
+                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                Verified
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-bold bg-black text-white px-3 py-1 rounded-full">
+                            {getTimeAgo(issue.createdAt)}
                           </span>
                         </div>
-                        <p className="mt-1 text-xs font-bold uppercase tracking-wide text-gray-500">
-                          {issue.category}
-                        </p>
-                        <div className="mt-2 flex items-center gap-3 text-[11px] font-bold text-gray-400">
-                          <span className="flex items-center gap-1 text-black">
-                            <MapPin className="h-3 w-3" /> {issue.location}
-                          </span>
-                          <span className="h-1 w-1 rounded-full bg-gray-300"></span>
-                          <span>{issue.date}</span>
-                        </div>
-                      </div>
 
-                      {/* Chevron for Desktop Interaction */}
-                      <div className="hidden sm:block">
-                        <div className="rounded-full border-2 border-black bg-gray-100 p-2 text-black transition-colors hover:bg-black hover:text-white">
-                          <ChevronRight className="h-5 w-5" />
+                        {/* Main Body */}
+                        <div className="p-6 md:p-8">
+                          <div className="flex justify-between items-start mb-4 gap-4">
+                            <h3 className="text-2xl md:text-3xl font-black leading-tight line-clamp-2 uppercase group-hover:underline decoration-4 underline-offset-4 decoration-[#FFDE59]">
+                              {issue.title}
+                            </h3>
+                            {issue.status === "Critical" && (
+                              <div className="bg-red-100 p-2 rounded-xl border-2 border-black shrink-0 animate-pulse">
+                                <AlertTriangle className="text-red-600 w-6 h-6" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 mt-6">
+                            <StatusPill status={issue.status} />
+                            <div className="flex items-center gap-1 text-[10px] font-bold text-gray-500 uppercase bg-gray-100 px-3 py-1.5 rounded-lg border border-black/10">
+                              <MapPin className="w-3 h-3" /> {issue.location}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </NeoCard>
+
+                        {/* Interactive Footer (Working Buttons) */}
+                        <div className="px-6 py-4 border-t-2 border-black flex justify-between items-center bg-white group-hover:bg-gray-50 transition-colors">
+                          <div className="flex gap-6">
+                            <button
+                              onClick={(e) => handleLike(e, issue._id)}
+                              className="flex items-center gap-2 text-xs font-black hover:text-green-600 transition-colors group/btn active:scale-95"
+                            >
+                              <ThumbsUp className="w-4 h-4" />
+                              <span>{issue.votes || 0}</span>
+                            </button>
+                            <button className="flex items-center gap-2 text-xs font-black hover:text-blue-600 transition-colors group/btn active:scale-95">
+                              <MessageSquare className="w-4 h-4" />
+                              <span>Comment</span>
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-400">
+                            <span className="text-[10px] font-bold uppercase tracking-wide">
+                              View Details
+                            </span>
+                            <ArrowUpRight className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </NeoCard>
+                    </Link>
                   </motion.div>
                 ))
               ) : (
-                <NeoEmptyState />
+                <EmptyStateCool />
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* MOBILE BOTTOM NAV (Hidden on PC) */}
       <div className="md:hidden">
-        <NeoBottomNav
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onFabClick={() => setIsReportModalOpen(true)}
-        />
+        <NeoBottomNav />
       </div>
-
-      {/* REPORT MODAL */}
-      <AnimatePresence>
-        {isReportModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm sm:items-center"
-            onClick={() => setIsReportModalOpen(false)}
-          >
-            <motion.div
-              initial={{ y: "100%", opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: "100%", opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg overflow-hidden rounded-3xl border-2 border-black bg-white p-8 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]"
-            >
-              <div
-                className="absolute right-4 top-4"
-                onClick={() => setIsReportModalOpen(false)}
-              >
-                <div className="group cursor-pointer rounded-full border-2 border-black bg-red-400 p-1 transition-transform hover:rotate-90">
-                  <X className="h-5 w-5 text-black" strokeWidth={3} />
-                </div>
-              </div>
-
-              <h2 className="mb-2 text-3xl font-black uppercase">New Report</h2>
-              <p className="mb-8 font-medium text-gray-500">
-                Document the issue to help us fix it faster.
-              </p>
-
-              <div className="grid grid-cols-2 gap-6">
-                <button className="group flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-black bg-[#A2E2F9] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-1 hover:shadow-none">
-                  <div className="rounded-full border-2 border-black bg-white p-4 transition-transform group-hover:scale-110">
-                    <div className="text-2xl">📷</div>
-                  </div>
-                  <span className="font-black uppercase tracking-wide">
-                    Take Photo
-                  </span>
-                </button>
-                <button className="group flex h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-black bg-[#FFB7B2] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all hover:translate-y-1 hover:shadow-none">
-                  <div className="rounded-full border-2 border-black bg-white p-4 transition-transform group-hover:scale-110">
-                    <div className="text-2xl">📝</div>
-                  </div>
-                  <span className="font-black uppercase tracking-wide">
-                    Text Only
-                  </span>
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
+
+// --- SUB-COMPONENTS ---
+
+const StatCard = ({ label, value, color }: any) => (
+  <div
+    className={`${color} border-2 border-black rounded-3xl p-6 flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all`}
+  >
+    <span className="text-5xl font-black tracking-tighter leading-none mb-1">
+      {value}
+    </span>
+    <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 bg-black/10 px-3 py-1 rounded-full">
+      {label}
+    </span>
+  </div>
+);
+
+const StatusPill = ({ status }: { status: string }) => {
+  let color = "bg-yellow-300";
+  let text = "Open";
+  if (status === "Resolved") {
+    color = "bg-green-400";
+    text = "Fixed";
+  }
+  if (status === "Critical") {
+    color = "bg-red-500 text-white";
+    text = "Critical";
+  }
+  if (status === "In Progress") {
+    color = "bg-blue-400";
+    text = "In Progress";
+  }
+
+  return (
+    <span
+      className={`text-[10px] font-black uppercase border-2 border-black px-3 py-1.5 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${color}`}
+    >
+      {text}
+    </span>
+  );
+};
+
+const EmptyStateCool = () => (
+  <div className="border-2 border-black border-dashed rounded-3xl p-12 flex flex-col items-center text-center bg-gray-50/50">
+    <div className="w-24 h-24 bg-[#FFDE59] rounded-full border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
+      <CheckCircle2 className="w-12 h-12 text-black" strokeWidth={2.5} />
+    </div>
+    <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">
+      All Clear
+    </h3>
+    <p className="text-sm font-bold text-gray-500 max-w-xs leading-relaxed">
+      No active issues reported right now. Campus is looking 100% clean.
+    </p>
+  </div>
+);
