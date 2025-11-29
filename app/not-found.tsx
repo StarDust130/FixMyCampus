@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Home, ArrowLeft, Ghost, Map, Footprints } from "lucide-react";
+import { Home, Ghost, Map, Footprints } from "lucide-react";
 
 export default function NotFound() {
   return (
