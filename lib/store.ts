@@ -1,5 +1,5 @@
 // lib/store.ts
-import clientPromise from "./mongodb";
+import clientPromise from "./db";
 
 // ---------- TYPES ----------
 
