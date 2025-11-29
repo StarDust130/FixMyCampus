@@ -363,7 +363,7 @@ export default function ReportPage() {
         <button
           onClick={handleSubmit}
           disabled={isSubmitting || isAnalyzing}
-          className="w-full bg-[#CBACF9] text-black border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full md:w-100 md:mx-auto bg-[#CBACF9] text-black border-2 border-black rounded-xl py-4 font-black uppercase tracking-widest text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {isSubmitting ? (
             <Loader2 className="animate-spin" />
