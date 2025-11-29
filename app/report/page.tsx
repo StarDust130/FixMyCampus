@@ -22,9 +22,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-
 // Using standard <img> for Base64 display
-// import Image from "next/image";
 
 const CATEGORIES = [
   {
@@ -40,7 +38,7 @@ const CATEGORIES = [
   { id: "Other", label: "Other", icon: MoreHorizontal, color: "bg-gray-300" },
 ];
 
-// --- TOAST COMPONENT (Retained for clean error/success messaging) ---
+// --- TOAST COMPONENT (For clean messaging) ---
 const NeoToast = ({
   message,
   type,
@@ -77,7 +75,7 @@ export default function ReportPage() {
   const [category, setCategory] = useState("Other");
   const [image, setImage] = useState<string | null>(null);
 
-  // UI State (Simplified - only submission and recording states remain)
+  // UI State (Only essential states remain)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [toast, setToast] = useState<{
@@ -109,14 +107,13 @@ export default function ReportPage() {
     }
   };
 
-  // --- 2. HANDLE AUDIO RECORDING (REMOVED TRANSCRIPTION WAIT) ---
+  // --- 2. HANDLE AUDIO RECORDING (MANUAL TRANSCRIPTION) ---
   const toggleRecording = async () => {
     if (isRecording) {
-      // Logic for stopping (you can add a local transcription feature later)
       mediaRecorderRef.current?.stop();
       setIsRecording(false);
       setToast({
-        message: "Recording stopped. Please transcribe manually.",
+        message: "Recording stopped. Transcribe text manually.",
         type: "error",
       });
     } else {
@@ -127,9 +124,7 @@ export default function ReportPage() {
         const mediaRecorder = new MediaRecorder(stream);
         mediaRecorderRef.current = mediaRecorder;
 
-        // Simplified stop logic for immediate feedback
         mediaRecorder.onstop = () => {
-          // In a real app, this is where transcription would be sent.
           setToast({ message: "Audio captured!", type: "success" });
         };
 
@@ -141,7 +136,7 @@ export default function ReportPage() {
     }
   };
 
-  // --- 3. SUBMIT TO DB (SUPER FAST DIRECT SUBMISSION) ---
+  // --- 3. SUBMIT TO DB (FAST REDIRECT) ---
   const handleSubmit = async () => {
     if (!title || !description) {
       setToast({ message: "Title & Description required", type: "error" });
@@ -167,7 +162,7 @@ export default function ReportPage() {
 
       if (!res.ok) throw new Error("Failed to save report.");
 
-      // SUPER FAST HACKATHON UX: Redirect immediately on success
+      // FINAL SPEED FIX: Redirect instantly after success API call
       setToast({ message: "Report Submitted!", type: "success" });
       window.location.href = "/issues";
     } catch (err) {
@@ -196,10 +191,10 @@ export default function ReportPage() {
       </header>
 
       <main className="pt-6 px-4 max-w-lg mx-auto space-y-5">
-        {/* --- 1. MEDIA CARD (COMPACT MOBILE FIX) --- */}
+        {/* --- 1. MEDIA CARD --- */}
         <div className="bg-white p-3 rounded-3xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
           {image ? (
-            // IMAGE PREVIEW (Using <img> for Base64)
+            // IMAGE PREVIEW
             <div className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-black bg-black group">
               <img
                 src={image}
@@ -217,6 +212,7 @@ export default function ReportPage() {
           ) : (
             // MEDIA BUTTONS (Compact h-24)
             <div className="flex gap-2 h-24">
+              {/* CAMERA BUTTON */}
               <label className="flex-1 bg-[#A2E2F9] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all shadow-sm">
                 <input
                   type="file"
@@ -228,6 +224,7 @@ export default function ReportPage() {
                 <Camera className="w-6 h-6 mb-1" strokeWidth={2.5} />
                 <span className="text-[10px] font-black uppercase">Camera</span>
               </label>
+              {/* GALLERY BUTTON */}
               <label className="flex-1 bg-[#FFB7B2] rounded-xl border-2 border-black flex flex-col items-center justify-center cursor-pointer hover:brightness-95 active:scale-95 transition-all shadow-sm">
                 <input
                   type="file"
