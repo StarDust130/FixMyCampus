@@ -23,6 +23,10 @@ import { NeoHeader } from "@/components/NeoHeader";
 import { NeoBottomNav } from "@/components/NeoBottomNav";
 import { NeoCard } from "@/components/NeoCards";
 
+// --- CONFIG & CACHE KEYS ---
+const CACHE_KEY = "fmc_issues_cache";
+const CACHE_TIMEOUT = 60000; // 60 seconds validity for cache
+
 // --- HELPERS (Keep local) ---
 const formatDate = (dateString: string) => {
   if (!dateString) return "Just now";
@@ -64,28 +68,52 @@ export default function IssuesPage() {
   const [selectedIssue, setSelectedIssue] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // --- INITIALIZATION ---
-  const refreshData = async () => {
-    setIsLoading(true);
+  // --- 1. SWR FETCH LOGIC (FAST LOAD) ---
+  const fetchIssuesWithCache = async () => {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    const cacheTime = localStorage.getItem(`${CACHE_KEY}_time`);
+    const now = Date.now();
+    let cacheHit = false;
+
+    // A. Check Local Cache (Instant Load)
+    if (cachedData && cacheTime && now - parseInt(cacheTime) < CACHE_TIMEOUT) {
+      setIssues(JSON.parse(cachedData));
+      setIsLoading(false);
+      cacheHit = true;
+    } else {
+      setIsLoading(true); // Only show spinner if we miss cache
+    }
+
+    // B. Fetch Fresh Data (Runs asynchronously)
     try {
       const res = await fetch("/api/reports");
-      const data = await res.json();
-      if (Array.isArray(data)) setIssues(data);
+      const freshData = await res.json();
+
+      if (Array.isArray(freshData)) {
+        // Update UI with fresh data and refresh local cache
+        setIssues(freshData);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(freshData));
+        localStorage.setItem(`${CACHE_KEY}_time`, now.toString());
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Network fetch failed:", e);
     } finally {
-      setIsLoading(false);
+      // Ensure loading spinner is turned off if it was on
+      if (!cacheHit) setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    // Auth: Get or Create Local User ID
     let userId = localStorage.getItem("fmc_user_id");
     if (!userId) {
       userId = "user_" + Math.random().toString(36).substr(2, 9);
       localStorage.setItem("fmc_user_id", userId);
     }
     setCurrentUserId(userId);
-    refreshData();
+
+    // Initial load using SWR pattern
+    fetchIssuesWithCache();
   }, []);
 
   // --- FILTERING ---
@@ -162,7 +190,7 @@ export default function IssuesPage() {
 
         {/* --- LIST CONTENT --- */}
         <div className="p-5 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {isLoading ? (
+          {isLoading && issues.length === 0 ? (
             [1, 2, 3, 4, 5, 6].map((i) => <IssueCardSkeleton key={i} />)
           ) : (
             <AnimatePresence mode="popLayout">
@@ -251,7 +279,7 @@ export default function IssuesPage() {
             issue={selectedIssue}
             currentUserId={currentUserId}
             onClose={() => setSelectedIssue(null)}
-            onRefresh={refreshData}
+            onRefresh={fetchIssuesWithCache} // Refresh uses the SWR method
           />
         )}
       </AnimatePresence>
@@ -269,7 +297,7 @@ const IssueCardSkeleton = () => {
     <div className="bg-white border-2 border-black/10 rounded-2xl p-0 overflow-hidden h-48 animate-pulse">
       <div className="p-4 flex justify-between">
         <div className="w-16 h-6 bg-gray-200 rounded-md" />
-        <div className-="w-10 h-4 bg-gray-200 rounded-md" />
+        <div className="w-10 h-4 bg-gray-200 rounded-md" />
       </div>
       <div className="px-4 space-y-2">
         <div className="w-3/4 h-6 bg-gray-200 rounded-md" />
@@ -288,7 +316,6 @@ const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
   const statusInfo = getStatusConfig(issue.status);
   const isReportOwner = currentUserId && issue.userId === currentUserId;
 
-  // Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     title: issue.title,
@@ -343,7 +370,6 @@ const Modal = ({ issue, currentUserId, onClose, onRefresh }: any) => {
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         onClick={(e) => e.stopPropagation()}
-        // Optimized mobile responsiveness
         className="bg-[#FFFDF5] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden flex flex-col h-[85vh] sm:h-auto sm:max-h-[90vh]"
       >
         {/* 1. Header Image */}

@@ -19,6 +19,7 @@ import {
   Wifi,
 } from "lucide-react";
 import Link from "next/link";
+import { fetchIssuesWithCache } from "@/lib/cache-fetch"; // Import SWR Logic
 
 import { NeoBottomNav } from "@/components/NeoBottomNav";
 import { NeoHeader } from "@/components/NeoHeader";
@@ -36,11 +37,7 @@ const getTimeAgo = (dateString: string) => {
   return `${Math.floor(diff / 86400)}d ago`;
 };
 
-// --- HELPER: Random Avatar ---
-const getAvatar = (seed: string) =>
-  `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}&backgroundColor=FFDE59,FFB7B2,A2E2F9`;
-
-// --- DATA: Quick Actions (Now with Links) ---
+// --- DATA: Quick Actions ---
 const quickActions = [
   {
     icon: Zap,
@@ -69,57 +66,47 @@ const quickActions = [
 ];
 
 export default function HomePage() {
+  const [activeTab, setActiveTab] = useState("home");
   const [issues, setIssues] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ pending: 0, resolved: 0, critical: 0 });
 
-  // FETCH REAL DATA
+  // FETCH REAL DATA USING CACHING (SWR PATTERN)
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("/api/reports");
-        const data = await res.json();
+    // 1. Initial Load: Serve cache immediately while background refresh runs
+    fetchIssuesWithCache(setIssues, setIsLoading);
 
-        if (Array.isArray(data)) {
-          setIssues(data);
-          setStats({
-            pending: data.filter((i: any) => i.status !== "Resolved").length,
-            resolved: data.filter((i: any) => i.status === "Resolved").length,
-            critical: data.filter((i: any) => i.status === "Critical").length,
-          });
-        }
-      } catch (error) {
-        console.error("Fetch error", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    // 2. Set interval for automatic refreshing (every 60 seconds)
+    const interval = setInterval(() => {
+      fetchIssuesWithCache(setIssues, () => {}); // No need to show loader on interval refresh
+    }, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  // HANDLE LIKE (Optimistic UI)
-  const handleLike = async (e: React.MouseEvent, id: string) => {
-    e.preventDefault(); // Prevent navigating to details
-    e.stopPropagation();
-
-    // 1. Optimistic Update (Update UI instantly)
-    setIssues((prev) =>
-      prev.map((issue) =>
-        issue._id === id ? { ...issue, votes: (issue.votes || 0) + 1 } : issue
-      )
-    );
-
-    // 2. API Call
-    try {
-      await fetch(`/api/reports/${id}/like`, { method: "PATCH" });
-    } catch (error) {
-      console.error("Like failed");
-      // Revert if failed (optional, usually skipped for likes)
+  // Calculate Stats whenever issues update
+  useEffect(() => {
+    if (issues.length > 0) {
+      const resolvedCount = issues.filter(
+        (i: any) => i.status === "Resolved"
+      ).length;
+      const pendingCount = issues.filter(
+        (i: any) => i.status !== "Resolved"
+      ).length;
+      const criticalCount = issues.filter(
+        (i: any) => i.status === "Critical"
+      ).length;
+      setStats({
+        pending: pendingCount,
+        resolved: resolvedCount,
+        critical: criticalCount,
+      });
     }
-  };
+  }, [issues]);
 
   return (
     <div className="min-h-screen bg-[#FFFDF5] font-sans text-black selection:bg-pink-300 pb-36">
+      {/* Background Texture */}
       <div
         className="fixed inset-0 pointer-events-none z-0 opacity-[0.04]"
         style={{
@@ -132,8 +119,9 @@ export default function HomePage() {
       <NeoHeader activeTab="home" />
       <NeoMarquee />
 
-      <main className="relative z-10 mx-auto max-w-7xl px-5 pt-8">
-        <div className="grid gap-12 md:gap-8 md:grid-cols-12 items-start">
+      <main className="relative z-10 mx-auto max-w-7xl px-5 pt-8 space-y-12 md:space-y-8">
+        {/* --- GRID LAYOUT --- */}
+        <div className="grid gap-10 md:gap-8 md:grid-cols-12 items-start">
           {/* === LEFT SIDEBAR === */}
           <div className="space-y-8 md:col-span-5 lg:col-span-4 md:sticky md:top-24">
             {/* 1. CAMPUS ALERTS */}
@@ -169,6 +157,7 @@ export default function HomePage() {
                       Priority Action
                     </div>
                   </div>
+
                   <div className="relative z-10 p-4">
                     <h3 className="text-5xl md:text-6xl font-black leading-[0.85] tracking-tighter mb-4 drop-shadow-sm">
                       FIX IT <br /> NOW
@@ -180,13 +169,15 @@ export default function HomePage() {
                       <ChevronRight className="h-4 w-4" />
                     </div>
                   </div>
+
+                  {/* Decor */}
                   <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-[#A2E2F9] rounded-full border-2 border-black z-0 group-hover:scale-110 transition-transform opacity-100" />
                 </NeoCard>
               </motion.div>
             </Link>
 
             {/* 3. STATS GRID */}
-            <div className="grid grid-cols-2 gap-6 mt-4">
+            <div className="grid grid-cols-2 gap-4">
               <StatCard
                 label="Pending"
                 value={stats.pending}
@@ -202,7 +193,7 @@ export default function HomePage() {
 
           {/* === RIGHT MAIN FEED === */}
           <div className="md:col-span-7 lg:col-span-8 space-y-10">
-            {/* 4. QUICK ACCESS (Working Links) */}
+            {/* 4. QUICK ACCESS */}
             <div>
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 ml-1">
                 Quick Access
@@ -245,7 +236,8 @@ export default function HomePage() {
 
             {/* ISSUES FEED */}
             <div className="space-y-8">
-              {isLoading ? (
+              {isLoading && issues.length === 0 ? (
+                // Renders placeholder skeletons only on initial cold load
                 [1, 2, 3].map((i) => (
                   <div
                     key={i}
@@ -268,13 +260,8 @@ export default function HomePage() {
                         {/* Header Stripe */}
                         <div className="px-6 py-4 border-b-2 border-black flex justify-between items-center bg-gray-50 group-hover:bg-[#FFFDF5] transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <img
-                                src={getAvatar(issue._id)}
-                                alt="User"
-                                className="w-8 h-8 rounded-full border-2 border-black bg-white"
-                              />
-                              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border border-black" />
+                            <div className="h-10 w-10 bg-black rounded-full border-2 border-black flex items-center justify-center text-white font-black text-xs">
+                              {issue.category.substring(0, 2).toUpperCase()}
                             </div>
                             <div className="flex flex-col">
                               <span className="text-xs font-black uppercase">
@@ -285,9 +272,11 @@ export default function HomePage() {
                               </span>
                             </div>
                           </div>
-                          <span className="text-[10px] font-bold bg-black text-white px-3 py-1 rounded-full">
-                            {getTimeAgo(issue.createdAt)}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold bg-black text-white px-3 py-1 rounded-full">
+                              {getTimeAgo(issue.createdAt)}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Main Body */}
@@ -311,19 +300,22 @@ export default function HomePage() {
                           </div>
                         </div>
 
-                        {/* Interactive Footer (Working Buttons) */}
+                        {/* Interactive Footer */}
                         <div className="px-6 py-4 border-t-2 border-black flex justify-between items-center bg-white group-hover:bg-gray-50 transition-colors">
                           <div className="flex gap-6">
                             <button
-                              onClick={(e) => handleLike(e, issue._id)}
+                              onClick={(e) => e.preventDefault()}
                               className="flex items-center gap-2 text-xs font-black hover:text-green-600 transition-colors group/btn active:scale-95"
                             >
-                              <ThumbsUp className="w-4 h-4" />
+                              <ThumbsUp className="w-4 h-4 group-active/btn:scale-125 transition-transform" />
                               <span>{issue.votes || 0}</span>
                             </button>
-                            <button className="flex items-center gap-2 text-xs font-black hover:text-blue-600 transition-colors group/btn active:scale-95">
-                              <MessageSquare className="w-4 h-4" />
-                              <span>Comment</span>
+                            <button
+                              onClick={(e) => e.preventDefault()}
+                              className="flex items-center gap-2 text-xs font-black hover:text-blue-600 transition-colors group/btn active:scale-95"
+                            >
+                              <MessageSquare className="w-4 h-4 group-active/btn:scale-125 transition-transform" />
+                              <span>{Math.floor(Math.random() * 5)}</span>
                             </button>
                           </div>
                           <div className="flex items-center gap-2 text-gray-400">
