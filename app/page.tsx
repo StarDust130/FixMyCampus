@@ -17,6 +17,11 @@ import {
   Droplets,
   Armchair,
   Wifi,
+  Loader2,
+  Award,
+  User,
+  TrendingUp,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchIssuesWithCache } from "@/lib/cache-fetch"; // Import SWR Logic
@@ -36,6 +41,10 @@ const getTimeAgo = (dateString: string) => {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 };
+
+// --- HELPER: Random Avatar ---
+const getAvatar = (seed: string) =>
+  `https://api.dicebear.com/7.x/notionists/svg?seed=${seed}&backgroundColor=FFDE59,FFB7B2,A2E2F9`;
 
 // --- DATA: Quick Actions ---
 const quickActions = [
@@ -65,26 +74,78 @@ const quickActions = [
   },
 ];
 
+// --- SUB-COMPONENTS (Local Definitions) ---
+
+const StatusPill = ({ status }: { status: string }) => {
+  let color = "bg-yellow-300";
+  let text = "Open";
+  if (status === "Resolved") {
+    color = "bg-green-400";
+    text = "Fixed";
+  }
+  if (status === "Critical") {
+    color = "bg-red-500 text-white";
+    text = "Critical";
+  }
+  if (status === "In Progress") {
+    color = "bg-blue-400";
+    text = "In Progress";
+  }
+
+  return (
+    <span
+      className={`text-[10px] font-black uppercase border-2 border-black px-3 py-1.5 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${color}`}
+    >
+      {text}
+    </span>
+  );
+};
+
+const EmptyStateCool = () => (
+  <div className="border-2 border-black border-dashed rounded-3xl p-12 flex flex-col items-center text-center bg-gray-50/50">
+    <div className="w-24 h-24 bg-[#FFDE59] rounded-full border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
+      <CheckCircle2 className="w-12 h-12 text-black" strokeWidth={2.5} />
+    </div>
+    <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">
+      All Clear
+    </h3>
+    <p className="text-sm font-bold text-gray-500 max-w-xs leading-relaxed">
+      No active issues reported right now. Campus is looking 100% clean.
+    </p>
+  </div>
+);
+
+const StatCard = ({ label, value, color }: any) => (
+  <div
+    className={`${color} border-2 border-black rounded-3xl p-6 flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all`}
+  >
+    <span className="text-5xl font-black tracking-tighter leading-none mb-1">
+      {value}
+    </span>
+    <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 bg-black/10 px-3 py-1 rounded-full">
+      {label}
+    </span>
+  </div>
+);
+
+// --- MAIN PAGE COMPONENT ---
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState("home");
   const [issues, setIssues] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({ pending: 0, resolved: 0, critical: 0 });
+  const [localIssues, setLocalIssues] = useState<any[]>([]);
 
   // FETCH REAL DATA USING CACHING (SWR PATTERN)
   useEffect(() => {
-    // 1. Initial Load: Serve cache immediately while background refresh runs
     fetchIssuesWithCache(setIssues, setIsLoading);
-
-    // 2. Set interval for automatic refreshing (every 60 seconds)
     const interval = setInterval(() => {
-      fetchIssuesWithCache(setIssues, () => {}); // No need to show loader on interval refresh
+      fetchIssuesWithCache(setIssues, () => {});
     }, 60000);
-
     return () => clearInterval(interval);
   }, []);
 
-  // Calculate Stats whenever issues update
+  // Calculate Stats and Limit Feed Items
   useEffect(() => {
     if (issues.length > 0) {
       const resolvedCount = issues.filter(
@@ -101,6 +162,11 @@ export default function HomePage() {
         resolved: resolvedCount,
         critical: criticalCount,
       });
+
+      // Limit to top 5 for the feed display
+      setLocalIssues(issues.slice(0, 5));
+    } else {
+      setLocalIssues([]);
     }
   }, [issues]);
 
@@ -122,7 +188,7 @@ export default function HomePage() {
       <main className="relative z-10 mx-auto max-w-7xl px-5 pt-8 space-y-12 md:space-y-8">
         {/* --- GRID LAYOUT --- */}
         <div className="grid gap-10 md:gap-8 md:grid-cols-12 items-start">
-          {/* === LEFT SIDEBAR === */}
+          {/* === LEFT SIDEBAR (Mobile Spacing Fixed) === */}
           <div className="space-y-8 md:col-span-5 lg:col-span-4 md:sticky md:top-24">
             {/* 1. CAMPUS ALERTS */}
             <div className="bg-white border-2 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-start gap-4">
@@ -177,7 +243,7 @@ export default function HomePage() {
             </Link>
 
             {/* 3. STATS GRID */}
-            <div className="grid grid-cols-2 mt-3 gap-4">
+            <div className="grid grid-cols-2 gap-4 mt-3">
               <StatCard
                 label="Pending"
                 value={stats.pending}
@@ -189,11 +255,43 @@ export default function HomePage() {
                 color="bg-green-300"
               />
             </div>
+
+            {/* 4. LEADERBOARD / TOP CONTRIBUTORS (Added for density) */}
+            <div className="hidden md:block bg-white border-2 border-black rounded-3xl p-6 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
+              <h4 className="font-black uppercase text-sm mb-4 flex items-center gap-2">
+                <Award className="w-5 h-5 text-purple-600" /> Top Solvers
+                (Karma)
+              </h4>
+              {/* Mock Data for the Leaderboard */}
+              {[
+                { name: "John D.", resolved: 12, rank: 1, color: "#FFDE59" },
+                { name: "S. Khan", resolved: 9, rank: 2, color: "#CBACF9" },
+                { name: "A. Smith", resolved: 7, rank: 3, color: "#A2E2F9" },
+              ].map((solver) => (
+                <div
+                  key={solver.rank}
+                  className="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-black/10 mt-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`font-black text-lg w-6 h-6 rounded-full flex items-center justify-center text-black border border-black shadow-sm`}
+                      style={{ backgroundColor: solver.color }}
+                    >
+                      {solver.rank}
+                    </span>
+                    <span className="font-bold text-sm">{solver.name}</span>
+                  </div>
+                  <span className="text-xs font-black uppercase bg-black text-white px-2 py-0.5 rounded-full">
+                    {solver.resolved} FIXES
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* === RIGHT MAIN FEED === */}
           <div className="md:col-span-7 lg:col-span-8 space-y-10">
-            {/* 4. QUICK ACCESS */}
+            {/* 5. QUICK ACCESS */}
             <div>
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-4 ml-1">
                 Quick Access
@@ -236,16 +334,16 @@ export default function HomePage() {
 
             {/* ISSUES FEED */}
             <div className="space-y-8">
-              {isLoading && issues.length === 0 ? (
-                // Renders placeholder skeletons only on initial cold load
+              {isLoading && localIssues.length === 0 ? (
+                // SKELETON LOADERS
                 [1, 2, 3].map((i) => (
                   <div
                     key={i}
                     className="h-64 rounded-3xl border-2 border-black/5 bg-white animate-pulse"
                   />
                 ))
-              ) : issues.length > 0 ? (
-                issues.map((issue, index) => (
+              ) : localIssues.length > 0 ? (
+                localIssues.map((issue, index) => (
                   <motion.div
                     key={issue._id}
                     initial={{ opacity: 0, y: 40 }}
@@ -343,57 +441,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-// --- SUB-COMPONENTS ---
-
-const StatCard = ({ label, value, color }: any) => (
-  <div
-    className={`${color} border-2 border-black rounded-3xl p-6 flex flex-col items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all`}
-  >
-    <span className="text-5xl font-black tracking-tighter leading-none mb-1">
-      {value}
-    </span>
-    <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 bg-black/10 px-3 py-1 rounded-full">
-      {label}
-    </span>
-  </div>
-);
-
-const StatusPill = ({ status }: { status: string }) => {
-  let color = "bg-yellow-300";
-  let text = "Open";
-  if (status === "Resolved") {
-    color = "bg-green-400";
-    text = "Fixed";
-  }
-  if (status === "Critical") {
-    color = "bg-red-500 text-white";
-    text = "Critical";
-  }
-  if (status === "In Progress") {
-    color = "bg-blue-400";
-    text = "In Progress";
-  }
-
-  return (
-    <span
-      className={`text-[10px] font-black uppercase border-2 border-black px-3 py-1.5 rounded-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${color}`}
-    >
-      {text}
-    </span>
-  );
-};
-
-const EmptyStateCool = () => (
-  <div className="border-2 border-black border-dashed rounded-3xl p-12 flex flex-col items-center text-center bg-gray-50/50">
-    <div className="w-24 h-24 bg-[#FFDE59] rounded-full border-2 border-black flex items-center justify-center mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce">
-      <CheckCircle2 className="w-12 h-12 text-black" strokeWidth={2.5} />
-    </div>
-    <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">
-      All Clear
-    </h3>
-    <p className="text-sm font-bold text-gray-500 max-w-xs leading-relaxed">
-      No active issues reported right now. Campus is looking 100% clean.
-    </p>
-  </div>
-);
