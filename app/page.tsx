@@ -177,7 +177,7 @@ export default function HomePage() {
             </Link>
 
             {/* 3. STATS GRID */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 mt-3 gap-4">
               <StatCard
                 label="Pending"
                 value={stats.pending}
