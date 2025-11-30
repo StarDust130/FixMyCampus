@@ -1,21 +1,6 @@
-# ⚡ Fix My Campus — Zero-Lag Campus Issue Reporter 🛠️
+## ⚡ Fix My Campus — Zero-Lag Campus Issue Reporter 🛠️
 
 A hyper-fast, neo-brutalist campus maintenance tool. Eliminates slow reporting and clunky workflows. Unleash the power of instant fixes!
-
-**🔗 Live Demo:** https://fix-my-campus.vercel.app/  
-**🌟 Star Us on GitHub!**
-
----
-
-## 🖼️ Preview
-
-> UI built for maximum clarity + speed. Brutalist layout, instant-load architecture. Screenshot showcases sleek, responsive design without any "fix it" prompts.
-
-<p align="center">
-    <a href="https://fix-my-campus.vercel.app/">
-        <img src="https://via.placeholder.com/800x600?text=Screenshot+Coming+Soon" alt="Fix My Campus Sleek Interface" width="100%" style="border-radius:10px; box-shadow: 0 4px 8px rgba(0,0,0,0.3);"/>
-    </a>
-</p>
 
 ---
 
